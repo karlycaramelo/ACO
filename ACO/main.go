@@ -92,6 +92,7 @@ func (a Ant) Paso() {
         count = count+1
     }    
 
+
     //Si el q es menor al valor dado q0 entonces vamos a agregar a la solucion el vertice con indice indexmaxrnValue
     //Actualzamos la feromona de manera local para el mismo vertice, y por ulitmo para ese vertice aremos  a todas
     //Las aristas que inciden en el con valor 0
@@ -359,7 +360,7 @@ func (e Edge) Print() {
 //Funcion principal que corre ACO
 func main() {
     //Leemos el archivo
-    data, err := ioutil.ReadFile("g1.txt")
+    data, err := ioutil.ReadFile("g.txt")
     if err != nil {
         fmt.Println("File reading error", err)
         return
@@ -373,13 +374,7 @@ func main() {
         vertexesG[count] = Vertex{count, 0.1, 0.2}
         count = count + 1
     }
-/*
-    count = 0;
-    for count < numOfVertexes {
-        vertexesG[count].Print()
-        count = count + 1
-    }
-*/
+
     //Inicializamos las aristas con los valores del archivo
     numOfEdges := len(rows)-2
     edgesG := make([]Edge, numOfEdges)
@@ -391,14 +386,6 @@ func main() {
         edgesG[count] = Edge{vertex1,vertex2,1}
         count = count + 1
     }
-
-/*  
-    count = 1;
-    for count < numOfEdges {
-        edgesG[count-1].Print()
-        count = count + 1
-    }
-*/
 
     //De lo anterior tenemos el conjuinto de vertices vertexesG y el conjunto de aristas edgesG
     //El apuntador a estos dos conjuntos se les pasara  a todas las hormigas para que los compartan
@@ -443,157 +430,131 @@ func main() {
         antCount = antCount +1
     }
     
+    ///////////////////////////////////
+    //////////ALGORITMO ACO////////////
+    ///////////////////////////////////
+    //Mientras no se tengan numIteracionSeguidasParaParar sin cambios en la solucion
+    //Ejecutaremos el siguiente ciclo
 
+////////////////////////CICLO////////////////////////////
     for numSinCambios <= numIteracionSeguidasParaParar{
-    fmt.Printf("Sin cambios: %d\n", numSinCambios)
-    //Iniciamos la graficaFull de las hormigas
-    antCount = 0
-    for antCount < numberOfAnts {
-        (*ants[antCount].graph).initFull()
-        ants[antCount].BorraSolucion()
-        antCount = antCount +1
-    }    
-    
-    sePuedeDarPaso := true
-    for sePuedeDarPaso != false {
 
-        otroPaso := false
+        //fmt.Printf("Sin cambios: %d\n", numSinCambios)
+
+        //Inicializamos a cada una de las hormigas estos es 
+        //Inicializar la grafica full
+        //Inicialar el slice de soluciones
+        //no necesitamos poner a la hormiga en un vertice arbitratio en un principio por que desde todos los vertices tenemos conexion a todos por ser grafica
+        //a todos por ser grafica completa
         antCount = 0
         for antCount < numberOfAnts {
-            if ants[antCount].PuedeDarUnPaso(){
-                otroPaso = true
-            }
+            (*ants[antCount].graph).initFull()
+            ants[antCount].BorraSolucion()
             antCount = antCount +1
-        }
-        sePuedeDarPaso = otroPaso
-        if sePuedeDarPaso{
+        }    
+    
+        //Mientras alguno de las hormigas pueda dar un paso
+        sePuedeDarPaso := true
+        for sePuedeDarPaso != false {
+
+            otroPaso := false
             antCount = 0
+            //Verificamos si alguna de las hormigas todavia puede dar un paso
             for antCount < numberOfAnts {
                 if ants[antCount].PuedeDarUnPaso(){
-                    ants[antCount].Paso()        
+                    otroPaso = true
                 }
                 antCount = antCount +1
             }
-        }
-    }
+            
+            //Si alguna hormiga todavia puede dar un paso
+            sePuedeDarPaso = otroPaso
+            if sePuedeDarPaso{
+                antCount = 0
+                for antCount < numberOfAnts {
+                    //Verificamos si la hormiga con index antCount puede dar un paso y si es asi
+                    //Esta damos el paso con esta hormiga
+                    if ants[antCount].PuedeDarUnPaso(){
 
-    antCount = 0
-    minSolLen := -1
-    minSolIndex := -1
-    for antCount < numberOfAnts {
-        solLen := len((*ants[antCount].solution))
-        if minSolLen > solLen || minSolLen < 0{
-            minSolLen = solLen
-            minSolIndex = antCount
-        }
-        antCount = antCount +1
-    }
-    ants[minSolIndex].PrintSolution()
-    if len(min_sol) >= len((*ants[minSolIndex].solution)){
-    fmt.Printf("Entra en igual o mayor: ")
-       if len(min_sol) == len((*ants[minSolIndex].solution)){
-           numSinCambios = numSinCambios+1
-       }else{
-           numSinCambios = 0
-       }
-
-        min_sol = make([]int, len((*ants[minSolIndex].solution)))
-        countSolIndex := 0
-        for countSolIndex < len(min_sol){
-            min_sol[countSolIndex] = (*ants[minSolIndex].solution)[countSolIndex]
-            countSolIndex = countSolIndex +1
-        }
-    }
-
-    countSolIndex := 0
-    fmt.Printf("MejorSolucion: ")
-    for countSolIndex < len(min_sol){
-        fmt.Printf("%d ", min_sol[countSolIndex])
-        countSolIndex = countSolIndex +1
-    }
-    fmt.Printf("\n")
-
-    //Actualiza feromona GLOBAL
-    countVertexIndex := 0
-    for countVertexIndex < len(vertexesG){
-        //vertexesG[countVertexIndex].Print()
-        countVertexIndex = countVertexIndex +1
-    }
-
-    countVertexIndex = 0
-    for countVertexIndex < len(vertexesG){
-        vertexIndex := vertexesG[countVertexIndex].index
-        vertexPheromone := vertexesG[countVertexIndex].pheromone
-        newPheromoneValue := (1-evaporation_rate)*vertexPheromone
-        addedPheromone := 0.0
-        countSolIndex := 0
-        for countSolIndex < len(min_sol){
-            if vertexIndex == min_sol[countSolIndex]{
-                addedPheromone = evaporation_rate*(1.0/float64((len(min_sol))))
-                //fmt.Printf("AddedPhero %f\n",addedPheromone)
+////////////////////////PASO//////////////////////////// (VER EL LA FUNCION)
+                        ants[antCount].Paso()        
+                    }
+                    antCount = antCount +1
+                }
             }
+        }
+
+///////////TODAS LAS HORMIGAS COMPLETAN SU TRAYECTO/////
+        //Una vez que ya se dieron todos los pasos posibles debemo encontrar la mejor solucion guardarla y actualziar la feromona
+        antCount = 0
+        //El tamaño de la solucion minima
+        minSolLen := -1
+        //El indice de la hormiga que tiene la solucion minima
+        minSolIndex := -1
+        //Buscamos la solucion minima entre todas las hormigas
+        for antCount < numberOfAnts {
+            solLen := len((*ants[antCount].solution))
+            if minSolLen > solLen || minSolLen < 0{
+                minSolLen = solLen
+                minSolIndex = antCount
+            }
+            antCount = antCount +1
+        }
+        ants[minSolIndex].PrintSolution()
+
+        //Verificamos que la solucioon mejor encontrada en este ciclo sea mejor que minima solucion actual
+        if len(min_sol) >= len((*ants[minSolIndex].solution)){
+           //Si la solucion tiene el mismo tamaño entonces sumaos 1 al contador de ciclos sin con el mismo 
+           //Tamaño de solucion
+           if len(min_sol) == len((*ants[minSolIndex].solution)){
+               numSinCambios = numSinCambios+1
+           //Si la solucion es mas pequeña regreamos el contador a 0 
+           }else{
+               numSinCambios = 0
+           }
+
+            //Borramos la mejor solucion anterior
+            min_sol = make([]int, len((*ants[minSolIndex].solution)))
+            countSolIndex := 0
+            //Copiamos la nueva solucion minima
+            for countSolIndex < len(min_sol){
+                min_sol[countSolIndex] = (*ants[minSolIndex].solution)[countSolIndex]
+                countSolIndex = countSolIndex +1
+            }
+        }
+
+        countSolIndex := 0
+        //Imprimimos la mejor solucion hasta el momento
+        fmt.Printf("MejorSolucion: ")
+        for countSolIndex < len(min_sol){
+            fmt.Printf("%d ", min_sol[countSolIndex])
             countSolIndex = countSolIndex +1
-        } 
-        vertexesG[countVertexIndex].pheromone = newPheromoneValue + addedPheromone
-        countVertexIndex = countVertexIndex +1
+        }
+        fmt.Printf("\n")
+
+////////////////////////ACTUALIZACION GLOBAL////////////////////////////
+        //Por ultimo vamos a hacer la actualizacion de la feromona de manera GLOBAL
+        countVertexIndex := 0
+        //Para cada uno de los vertices calculamos el nuevo valor de la hormona considerando la evaporacion
+        for countVertexIndex < len(vertexesG){
+            vertexIndex := vertexesG[countVertexIndex].index
+            vertexPheromone := vertexesG[countVertexIndex].pheromone
+            newPheromoneValue := (1-evaporation_rate)*vertexPheromone
+            addedPheromone := 0.0
+            countSolIndex := 0
+            //Si el vertice es parte de la solucion minima actual entonces tambien calculamos la feromona extra que se le sumara
+            for countSolIndex < len(min_sol){
+                if vertexIndex == min_sol[countSolIndex]{
+                    addedPheromone = evaporation_rate*(1.0/float64((len(min_sol))))
+                    //fmt.Printf("AddedPhero %f\n",addedPheromone)
+                }
+                countSolIndex = countSolIndex +1
+            } 
+            //Actualizamos el valor de la feromona
+            vertexesG[countVertexIndex].pheromone = newPheromoneValue + addedPheromone
+            countVertexIndex = countVertexIndex +1
+        }
+
     }
-
-    countVertexIndex = 0
-    for countVertexIndex < len(vertexesG){
-        //vertexesG[countVertexIndex].Print()
-        countVertexIndex = countVertexIndex +1
-    }
-    }
-
-    //fmt.Printf("Minimo %d\n",minSolIndex)
-    //fmt.Printf("Ant %d\n",0)
-    //ants[0].PrintSolution()
-    //fmt.Printf("Ant %d\n",1)
-    //ants[1].PrintSolution()
-
-
-//(*ants[0].graph).Print()
-//(*ants[1].graph).Print()
-
-/*
-    (*ants[0].graph).Print()
-    (*ants[1].graph).Print()
-    (*(*ants[0].graph).vertexes)[2].pheromone = 3.3
-    (*(*ants[1].graph).vertexes)[4].pheromone = 4.3
-    (*ants[0].graph).Print()
-    (*ants[1].graph).Print()
-    (*ants[0].graph).initFull()
-    (*ants[1].graph).initFull()
-    ants[0].PrintSolution()
-    ants[1].PrintSolution()
-    ants[0].AgregaASolucion(1)
-    ants[0].AgregaASolucion(2)
-    ants[0].AgregaASolucion(3)
-    ants[1].AgregaASolucion(2)
-    ants[0].PrintSolution()
-    ants[1].PrintSolution()
-    ants[0].BorraSolucion()
-    ants[0].PrintSolution()
-    ants[1].PrintSolution()
-
-    //fmt.Printf("Existe %d %d %t \n", 7,5,graphG1.ExisteEnEdges(7,5))
-
-    //graphG1.initFull()
-    //graphG1.PrintFull()
-    //fmt.Printf("Weight %f \n", graphG1.FullWeight())
-
-    //graphG.SetEdge(4, 6, 2.2)
-    //graphG.PrintFull()
-
-    fmt.Printf("Weight %f \n", graphG.FullWeight())
-    fmt.Printf("Weight of %d %f \n", 0,graphG.FullWeightOfVertex(0))
-    fmt.Printf("Weight of %d %f \n", 1,graphG.FullWeightOfVertex(1))
-    fmt.Printf("Weight of %d %f \n", 2,graphG.FullWeightOfVertex(2))
-    fmt.Printf("Weight of %d %f \n", 3,graphG.FullWeightOfVertex(3))
-    fmt.Printf("Weight of %d %f \n", 4,graphG.FullWeightOfVertex(4))
-    fmt.Printf("Weight of %d %f \n", 5,graphG.FullWeightOfVertex(5))
-    fmt.Printf("Weight of %d %f \n", 6,graphG.FullWeightOfVertex(6))
-    fmt.Printf("Weight of %d %f \n", 7,graphG.FullWeightOfVertex(7))
-*/
 
 }

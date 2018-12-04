@@ -9,24 +9,45 @@ import (
     "math/rand"
 )
 
+//Estructura que represneta un vertice
+//Tiene aparte del indice del vertice un valor de la feromona inicial
+//Y un valor que sera el valor de la feromona
 type Vertex struct {
     index int
     pheromone_init float64
     pheromone float64
 }
 
+//Estructura para representar las aristas
+//Las aristas solo tienen 2 entero que son los indices 
+//De los vertices que conecta
+//Tambien tiene un peso weight
 type Edge struct {
     v1_index int
     v2_index int
     weight float64
 }
 
+//Estructura que representa una grafica
+//Tiene un slice de veritces vertexes que es un aputnador
+//Para que todas las graficas que definamos para las hormigas hagan referencia al mismo slice
+//Tiene un slice de aristas edges que van a representar las aristas de la grafica original
+//Tiene un slice de aristas full que van a repesentar la grafica completa
 type Graph struct {
     vertexes *[]Vertex
     edges *[]Edge
     full *[]Edge
 }
 
+//Estructura que representa una hormiga
+//La hormiga tiene un indice index
+//Un apuntador a una grafica grap
+//Un apuntador a un generador aleatorio random
+//Un slice de enteros para ir guardandao la solucion 
+//El parametro q0
+//Un parametro para la evaporacion de la hormona (evaporation_rate) se usa para la rregal de actualizacion global
+//Un parametro para el ajusta de la hormona (pheromone_adjust) se usa para la regla de actualizacion local
+//Tambien va a tener el parametro beta que sirve para controlar el peso que tiene la funcion NR
 type Ant struct {
     index int
     graph *Graph
@@ -35,21 +56,32 @@ type Ant struct {
     q0 float64
     evaporation_rate float64
     pheromone_adjust float64
+    //beta float64
 }
 
-func (a Ant) ActualizaFeromona(indexVertex int){
+
+//Funicon que hace la actualizacion de manera local a la fermonona del vertice con indice indexVertex
+func (a Ant) ActualizaFeromonaLocalmente(indexVertex int){
     pheromone0 := (*(*a.graph).vertexes)[indexVertex].pheromone_init
     pheromonei := (*(*a.graph).vertexes)[indexVertex].pheromone
     (*(*a.graph).vertexes)[indexVertex].pheromone = ((1-a.pheromone_adjust)*pheromonei)+(a.pheromone_adjust*pheromone0)
 }
 
+
+//Funcion que simula un pao para la hormiga
 func (a Ant) Paso() {
+    //Primero calculamos el valor aleatorio q
     q := a.random.Float64()
+    //Calculamos el valor RN poara todos los vertices 
     rnvalues := a.GetVertexesRNValue() 
+    //sumrnValues nos rive para guardar la suma de los valores rn de todos los vertices
     sumrnValues := 0.0
+    //maxrnvalue nos srive para guardar el valor maximo de los valores  rn
     maxrnValue := 0.0
+    //indexmasrnValue nos sirve para guardar el indice del vertice con el valor rn maximo
     indexmaxrnValue := -1 
     count := 0;
+    //Dentro de este ciclo calculamos sumrnValues, maxrnValue y indexmaxrnValue
     for count < len(rnvalues) {
         //fmt.Printf("IndexV: %d RN: %f\n", count, rnvalues[count])
         if maxrnValue <= rnvalues[count] {
@@ -58,45 +90,53 @@ func (a Ant) Paso() {
         }
         sumrnValues = sumrnValues + rnvalues[count]
         count = count+1
-    }
-    count = 0;
-    //fmt.Printf("q<q0 Maximo Indice: %d Maximo Value: %f\n", indexmaxrnValue, maxrnValue)
-    for count < len(rnvalues) {
-        //fmt.Printf("IndexV: %d q>=q0: %f\n", count, (rnvalues[count]/sumrnValues))
-        count = count+1
-    }
-    
+    }    
 
+    //Si el q es menor al valor dado q0 entonces vamos a agregar a la solucion el vertice con indice indexmaxrnValue
+    //Actualzamos la feromona de manera local para el mismo vertice, y por ulitmo para ese vertice aremos  a todas
+    //Las aristas que inciden en el con valor 0
     if q < a.q0{
         //fmt.Printf("Feromona antes: %f\n", (*(*a.graph).vertexes)[indexmaxrnValue].pheromone)
         a.AgregaASolucion(indexmaxrnValue)
-        a.ActualizaFeromona(indexmaxrnValue)
+        a.ActualizaFeromonaLocalmente(indexmaxrnValue)
         (*a.graph).FullEdgesTo0ForVertex(indexmaxrnValue)
         //fmt.Printf("Se agrego %d\n", indexmaxrnValue)
         //fmt.Printf("Feromona Despues: %f\n", (*(*a.graph).vertexes)[indexmaxrnValue].pheromone)
         //a.PrintSolution()
+
+    //Si q no es menor al valor dado q0
     }else{
+        //Mientras que no da un paso la hormiga haremos lo sigueinte
         dioPaso := false
         for dioPaso != true{
+            //Calculamos un indice de los vertices de manera aleatoria
             randomIndex := rand.Intn(len(rnvalues))
+            //Calcualmos la probabilidad (como en el pdf) que la hormiga de un paso a este vertice
             indexProb := (rnvalues[randomIndex]/sumrnValues)
+            //Calculamos otro numero aletaorioa entre 0 y 1
             randonNumber := a.random.Float64()
             //fmt.Printf("Random Index: %d indexProb: %f RandomNumber: %f\n", randomIndex, indexProb, randonNumber)
+            //Si el numeor aleatorio calculado es menor o igual a la probabilidad de que la hormiga diera el paso a ese vertice
+            //Entonces damos el paso a ese vertice
+            //Vamos a agregar a la solucion el vertice con indice randomIndex
+            //Actualzamos la feromona de manera local para el mismo vertice, y por ulitmo para ese vertice aremos  a todas
+            //Las aristas que inciden en el con valor 0
             if randonNumber <= indexProb{
                 a.AgregaASolucion(randomIndex)
-                a.ActualizaFeromona(randomIndex)
+                a.ActualizaFeromonaLocalmente(randomIndex)
                 (*a.graph).FullEdgesTo0ForVertex(randomIndex)
                 //fmt.Printf("Se agrego %d\n", randomIndex)
+                //Si damos el paso entonces hacemos este fvalor true de  tal manera que esta fucnion se detendra
                 dioPaso = true
             }
-
-
         }
     }
     //fmt.Printf("%f\n",  q)
     //fmt.Printf("%t q=%f < %f=q0\n", q < a.q0, q, a.q0)
 }
 
+//Meotod que nos dice si la hormiga puede dar un paso es decir si alguan de sus
+//Aristas todavia tiene peso 1
 func (a Ant) PuedeDarUnPaso() bool {
     peso := (*a.graph).FullWeight()
     if peso != 0{
@@ -106,6 +146,8 @@ func (a Ant) PuedeDarUnPaso() bool {
     }
 }
 
+//Calcula el valor RN para cada uno de los vertices para la hormiga y los regresa en un 
+//Slice de float donde el indice i del slice corresponde al vertice i
 func (a Ant) GetVertexesRNValue() []float64 {
     numVertex := len((*(*a.graph).vertexes))
     rnvalues := make([]float64, numVertex)
@@ -122,14 +164,18 @@ func (a Ant) GetVertexesRNValue() []float64 {
     return rnvalues
 }
 
+//Funcion que inicializa el slice solucion en 0
 func (a Ant) BorraSolucion(){
     (*a.solution) = make([]int, 0)
 }
 
+//Funcion que agrega el indice de un vertice al slice de solucion
 func (a Ant) AgregaASolucion(v int){
     (*a.solution) = append((*a.solution),v)
 }
 
+
+//Funcion dada una grafica imprime el contenido del slice de los idices de los vertices con "la solucion"
 func (a Ant) PrintSolution(){
     count := 0;
     fmt.Printf("Solucion: ")
@@ -140,6 +186,7 @@ func (a Ant) PrintSolution(){
     fmt.Printf("\n")
 }
 
+//Funcion que dada una grafica nos da el peso total de las aristas en "FULL"
 func (g Graph) FullWeight() float64 {
     count := 0;
     weight := 0.0
@@ -150,6 +197,8 @@ func (g Graph) FullWeight() float64 {
     return weight
 }
 
+//Funcion que dada un vertice v nos regresa la suma de los pesos de las aristas en "FULL" que inciden en este
+//Vertice
 func (g Graph) FullWeightOfVertex(v int) float64 {
     count := 0;
     weight := 0.0
@@ -165,6 +214,8 @@ func (g Graph) FullWeightOfVertex(v int) float64 {
     return weight
 }
 
+//Funcion que convierte el peso de todas aristas en "FULL" que inciden en el vertice v
+//a 0
 func (g Graph) FullEdgesTo0ForVertex(v int)  {
     count := 0;
     for count < len(*g.full) {
@@ -180,6 +231,8 @@ func (g Graph) FullEdgesTo0ForVertex(v int)  {
 }
 
 
+//Funcion que dada una grafica y dos vertices v1 y v2
+//En la lista de vertices "FULL" asigna el valor del peso a value
 func (g Graph) SetEdge(v1 int, v2 int, value float64){
     count := 0;
     for count < len(*g.full) {
@@ -198,6 +251,9 @@ func (g Graph) SetEdge(v1 int, v2 int, value float64){
     }
 }
 
+
+//Funcion que nos dice si una par de vertices son elemento de alguna de las aristas originales
+//Es decir si existe una arista en las "aristas orginales" que conecte al vertice v1 con el v2
 func (g Graph) ExisteEnEdges(v1 int, v2 int) bool {
     count := 0;
     for count < len(*g.edges) {
@@ -217,6 +273,10 @@ func (g Graph) ExisteEnEdges(v1 int, v2 int) bool {
     return false
 }
 
+
+//Funcion que dada una grafica tomas sus vertices y las aristas orginales y a la grafica le
+//Asigna los pesos de tal forma que las aristas en las "aristas originales" tiene peso 1 
+//y las demas peso 0 
 func (g Graph) initFull(){
     numVertex := len(*g.vertexes)
     count := 0
@@ -236,6 +296,8 @@ func (g Graph) initFull(){
     }
 }
 
+
+//Funcion que imprime la represetancion en cadena de la grafica completa de  una grafica
 func (g Graph) PrintFull() {
     count := 0;
     for count < len(*g.full) {
@@ -244,6 +306,7 @@ func (g Graph) PrintFull() {
     }
 }
 
+//Funcion que imprime la representacion en cadena de una grafica (su vertices y las aristas "originales")
 func (g Graph) Print() {
     count := 0;
     for count < len(*g.vertexes) {
@@ -257,37 +320,46 @@ func (g Graph) Print() {
     }
 }
 
+//Funcion que regrfesa el indice de un vertice
 func (v Vertex) GetIndex() int {
     return v.index
 }
 
+//Funcion que regrfesa el valor de la feromona de un vertice
 func (v Vertex) GetPheromone() float64 {
     return v.pheromone
 }
 
+//Funcion que imprime la representacion en cadena de un vertice
 func (v Vertex) Print() {
     fmt.Printf("Vertice: %d\n    Feromona Ini: %f\n    Feromona Act: %f\n", v.index, v.pheromone_init, v.pheromone)
 }
 
+//Funcion que regresa el peso de una arista
 func (e Edge) GetWeight() float64 {
     return e.weight
 }
 
+//Funcion que regesa el vertice1 de una arista
 func (e Edge) GetVertex1() int {
     return e.v1_index
 }
 
+//Funcion que regesa el vertice2 de una arista
 func (e Edge) GetVertex2() int {
     return e.v2_index
 }
 
+//Funcincion que imprime la representacion en cadena de una arista
 func (e Edge) Print() {
     fmt.Printf("%d --(%f)-- %d\n", e.v1_index, e.weight, e.v2_index)
 }
 
+
+//Funcion principal que corre ACO
 func main() {
     //Leemos el archivo
-    data, err := ioutil.ReadFile("g.txt")
+    data, err := ioutil.ReadFile("g1.txt")
     if err != nil {
         fmt.Println("File reading error", err)
         return
@@ -308,7 +380,7 @@ func main() {
         count = count + 1
     }
 */
-    //Inicializamos las aristas
+    //Inicializamos las aristas con los valores del archivo
     numOfEdges := len(rows)-2
     edgesG := make([]Edge, numOfEdges)
     count = 0;
@@ -328,30 +400,51 @@ func main() {
     }
 */
 
+    //De lo anterior tenemos el conjuinto de vertices vertexesG y el conjunto de aristas edgesG
+    //El apuntador a estos dos conjuntos se les pasara  a todas las hormigas para que los compartan
+    //Y todas tengan los mismos conjuntos
+
+
+    //VARIABLE QUE NOS DIRA CUANTAS VECES SE HA ENCONTRADO UNA SOLUCION CON EL MISMO TAMAÑO DE MANERA CONSECUTIVA 
     numSinCambios := 0
+    //Variable que nos dice el numero de veces que si se encuentra la solcucion con el mismo tamaño se detendra el algoritmo
+    numIteracionSeguidasParaParar := 200
+    //Defefine el numero de hormigas que tendremos
+    numberOfAnts := 20
+    //Calculamos la cantidad de aristas que debe de tener la greafica comompleta dada la cantidad de vertices que tenemos
+    numOfEdgesFull := (numOfVertexes*(numOfVertexes-1))/2
+
+    //VARIABLES QUE DEFINE LOS PARAMETROS DEL ALGORITMO
     q := 0.5
     evaporation_rate := 0.2
     pheromone_adjust := 0.12
-    numOfEdgesFull := (numOfVertexes*(numOfVertexes-1))/2
-    numberOfAnts := 2
-    randomSeed := rand.New(rand.NewSource(int64(1)))
+    //beta := 1
+    //VARIABLES QUE DEFINE LOS PARAMETROS DEL ALGORITMO
+
+    //Semilla para la funcion de numeros aleatorios
+    randomSeed := 1
+    //La funcion para generar los numeros aletarios que usaremos
+    randomFun := rand.New(rand.NewSource(int64(randomSeed)))
     min_sol := make([]int, numOfVertexes)
     
+    //Inicializamos un slice de hormigas con la cantida de hormigas definida
     ants := make([]Ant, numberOfAnts)
+
     antCount := 0
+    //Para cada hormiga le vamos a crear su slice de edgesFull, una grafica con el apuntaos a los vertifces
+    //el aputnador a las aristas y sus aristas que rempresentaran a la grafica completa
+    //Depues vamos a crear ala hormiga con los parametros
+    //La grafica que le creamos, un slice de enteros para sus soluciones, la funcion aleatorio y los parametros 
     for antCount < numberOfAnts {
         edgesFull := make([]Edge, numOfEdgesFull)
         graphG := Graph{&vertexesG,&edgesG,&edgesFull}
         slice := make([]int, 0)
-        ants[antCount] = Ant{antCount,&graphG,randomSeed, &slice,q,evaporation_rate,pheromone_adjust}
+        ants[antCount] = Ant{antCount,&graphG,randomFun, &slice,q,evaporation_rate,pheromone_adjust}
         antCount = antCount +1
     }
     
 
-
-
-
-    for numSinCambios <= 200{
+    for numSinCambios <= numIteracionSeguidasParaParar{
     fmt.Printf("Sin cambios: %d\n", numSinCambios)
     //Iniciamos la graficaFull de las hormigas
     antCount = 0

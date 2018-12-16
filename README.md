@@ -1,2 +1,2 @@
 # ACO
-Covertura mínima con colonia de hormigas
+Cobertura mínima con colonia de hormigas
